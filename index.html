@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
     <title>JAV VOD Streaming</title>
     
     <!-- Web Icon -->
@@ -21,7 +22,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Video.js CSS (สำหรับ Server 2) -->
+    <!-- Video.js CSS -->
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
 
     <script>
@@ -71,31 +72,42 @@
             overflow: hidden;
         }
 
-        /* Video.js Skin Overrides to match theme */
+        /* Video.js Theme Overrides */
         .video-js .vjs-big-play-button {
-            background-color: rgba(229, 9, 20, 0.8) !important;
+            background-color: rgba(229, 9, 20, 0.9) !important;
             border-color: #e50914 !important;
             border-radius: 50%;
-            width: 2em;
-            height: 2em;
-            line-height: 2em;
+            width: 70px;
+            height: 70px;
+            line-height: 70px;
             top: 50%;
             left: 50%;
-            margin-top: -1em;
-            margin-left: -1em;
+            transform: translate(-50%, -50%);
+            font-size: 40px;
+            border-width: 0px;
+            box-shadow: 0 0 20px rgba(229, 9, 20, 0.5);
+            transition: all 0.3s ease;
+        }
+        .video-js .vjs-big-play-button:hover {
+            background-color: #e50914 !important;
+            transform: translate(-50%, -50%) scale(1.1);
         }
         .video-js .vjs-control-bar {
-            background-color: rgba(0, 0, 0, 0.7);
+            background-color: rgba(0, 0, 0, 0.85);
+            height: 50px;
         }
         .video-js .vjs-slider {
-            background-color: rgba(255, 255, 255, 0.3);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .vjs-error-display {
+            background: #000;
         }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- Video.js Script (โหลดจาก CDN) -->
+    <!-- Video.js Script -->
     <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
 
     <script type="text/babel">
@@ -113,11 +125,12 @@
                         
                         {/* Player Header */}
                         <div className="flex justify-between items-center px-4 py-3 border-b border-gray-800 bg-gray-900">
-                            <div className="flex items-center gap-2 overflow-hidden">
-                                <span className={`text-xs font-bold px-2 py-0.5 rounded text-white ${server === 1 ? 'bg-brand-accent' : 'bg-blue-600'}`}>
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded text-white flex items-center gap-1 ${server === 1 ? 'bg-brand-accent' : 'bg-blue-600'}`}>
+                                    <i className={server === 1 ? "fa-solid fa-play" : "fa-brands fa-google"}></i>
                                     {server === 1 ? 'PlayerJS' : 'VideoJS'}
                                 </span>
-                                <h3 className="text-white font-medium truncate">{video.name}</h3>
+                                <h3 className="text-white font-medium truncate max-w-[200px] sm:max-w-md">{video.name}</h3>
                             </div>
                             <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center transition-all">
                                 <i className="fa-solid fa-xmark text-xl"></i>
@@ -142,7 +155,6 @@
             const [isLoaded, setLoaded] = useState(false);
 
             useEffect(() => {
-                // Load script if not exists
                 if (!window.Playerjs) {
                     const script = document.createElement('script');
                     script.src = 'playerjs.js';
@@ -157,25 +169,27 @@
 
             useEffect(() => {
                 if (isLoaded && window.Playerjs) {
-                    const config = {
-                        id: "playerjs-container",
-                        file: src,
-                        autoplay: 1,
-                        poster: video.logo,
-                    };
-                    if (video.subtitles) {
-                        config.subtitle = `[Thai]${video.subtitles}`;
-                        config.subtitle_start = 1;
-                    }
                     try {
+                        const config = {
+                            id: "playerjs-container",
+                            file: src,
+                            autoplay: 1,
+                            poster: video.logo,
+                        };
+                        if (video.subtitles) {
+                            config.subtitle = `[Thai]${video.subtitles}`;
+                            config.subtitle_start = 1;
+                        }
                         new window.Playerjs(config);
-                    } catch (e) { console.error("PlayerJS Init Error", e); }
+                    } catch (e) { 
+                        console.error("PlayerJS Init Error", e); 
+                    }
                 }
             }, [isLoaded, src, video]);
 
             return (
                 <div id="playerjs-container" className="w-full h-full">
-                    {!isLoaded && <div className="flex items-center justify-center h-full text-gray-500">Loading PlayerJS...</div>}
+                    {!isLoaded && <div className="flex items-center justify-center h-full text-gray-500 gap-2"><i className="fa-solid fa-circle-notch fa-spin"></i> Loading PlayerJS...</div>}
                 </div>
             );
         };
@@ -187,20 +201,29 @@
 
             useEffect(() => {
                 if (videoNode.current) {
-                    // Options
+                    // ตรวจสอบนามสกุลไฟล์
+                    const isM3U8 = src.includes('.m3u8');
+                    
                     const options = {
                         autoplay: true,
                         controls: true,
                         responsive: true,
                         fluid: true,
                         poster: video.logo,
+                        html5: {
+                            hls: { overrideNative: true },
+                            nativeVideoTracks: false,
+                            nativeAudioTracks: false,
+                            nativeTextTracks: false
+                        },
                         sources: [{
                             src: src,
-                            type: src.endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
+                            // FIX: Force 'video/mp4' if not m3u8. 
+                            // This tricks Video.js into accepting URL with no extension (like Google Drive/Photos)
+                            type: isM3U8 ? 'application/x-mpegURL' : 'video/mp4' 
                         }]
                     };
 
-                    // Subtitles
                     if (video.subtitles) {
                         options.tracks = [{
                             kind: 'subtitles',
@@ -211,9 +234,12 @@
                         }];
                     }
 
-                    // Init Video.js
-                    player.current = videojs(videoNode.current, options, () => {
-                        // Player Ready
+                    player.current = videojs(videoNode.current, options, function() {
+                        this.play().catch(e => console.log("Auto-play prevented:", e));
+                    });
+
+                    player.current.on('error', () => {
+                        console.error("VideoJS reported an error for src:", src);
                     });
                 }
 
@@ -226,7 +252,7 @@
 
             return (
                 <div data-vjs-player className="w-full h-full">
-                    <video ref={videoNode} className="video-js vjs-big-play-centered w-full h-full" />
+                    <video ref={videoNode} className="video-js vjs-big-play-centered w-full h-full" playsInline />
                 </div>
             );
         };
@@ -266,6 +292,8 @@
                 lines.forEach((line, index) => {
                     line = line.trim();
                     if (!line) return;
+
+                    // Note: No URL modification here (User handles dl=1 manually)
 
                     if (line.startsWith('#EXTINF:')) {
                         if (current && current.link1) result.push(current);
@@ -334,7 +362,7 @@
                                     {groups.map(g => <option key={g} value={g}>{g}</option>)}
                                 </select>
                             </div>
-                            <ul className="hidden lg:flex flex-col gap-1 max-h-[80vh] overflow-y-auto pr-2">
+                            <ul className="hidden lg:flex flex-col gap-1 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
                                 {groups.map(g => (
                                     <li key={g}>
                                         <button onClick={() => setSelectedGroup(g)}
@@ -351,6 +379,8 @@
                         <main className="flex-1 min-w-0">
                             {loading ? (
                                 <div className="flex justify-center items-center h-64"><i className="fa-solid fa-circle-notch fa-spin text-4xl text-brand-accent"></i></div>
+                            ) : error ? (
+                                <div className="text-center text-red-400 p-10 bg-red-900/10 border border-red-900 rounded">{error}</div>
                             ) : (
                                 <>
                                     <div className="flex items-center justify-between mb-6">
@@ -378,6 +408,7 @@
                                             </div>
                                         ))}
                                     </div>
+                                    {filteredVideos.length === 0 && <div className="text-center py-20 text-gray-500">ไม่พบข้อมูล</div>}
                                 </>
                             )}
                         </main>
@@ -392,7 +423,7 @@
                                 </button>
                                 {currentVideo.link2 && (
                                     <button onClick={() => setServer(2)} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${server === 2 ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-800 text-gray-400'}`}>
-                                        <i className="fa-solid fa-server"></i> Server 2 (VJS)
+                                        <i className="fa-brands fa-google"></i> Server 2 (VJS)
                                     </button>
                                 )}
                             </div>
