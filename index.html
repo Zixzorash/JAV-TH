@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- ป้องกันการส่ง Referrer เพื่อลดปัญหาการบล็อกลิงก์จาก Google Drive -->
     <meta name="referrer" content="no-referrer">
     <title>JAV VOD Streaming</title>
     
@@ -35,7 +36,8 @@
                             card: '#18181b',
                             accent: '#e50914',
                             text: '#f3f4f6',
-                            muted: '#9ca3af'
+                            muted: '#9ca3af',
+                            dark: '#121212'
                         }
                     },
                     animation: {
@@ -56,7 +58,7 @@
         body {
             background-color: #0f0f0f;
             color: #f3f4f6;
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', 'Sarabun', sans-serif;
             overflow-x: hidden;
         }
         ::-webkit-scrollbar { width: 6px; }
@@ -115,35 +117,89 @@
 
         const M3U_URL = "https://raw.githubusercontent.com/Zixzorash/IPTV/refs/heads/AV-JAPANESE/JAV_BACKUP.m3u";
 
-        // --- Component: Video Player Manager ---
-        const VideoPlayerManager = ({ video, server, onClose }) => {
+        // --- Component: Video Player Manager (Updated UI) ---
+        const VideoPlayerManager = ({ video, server, setServer, onClose }) => {
             const activeUrl = server === 1 ? video.link1 : (video.link2 || video.link1);
 
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in p-4">
-                    <div className="w-full max-w-5xl bg-brand-card rounded-xl overflow-hidden shadow-2xl border border-gray-800 flex flex-col">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-fade-in p-2 sm:p-4 overflow-y-auto">
+                    <div className="w-full max-w-4xl bg-brand-card rounded-xl overflow-hidden shadow-2xl border border-gray-800 flex flex-col my-auto relative">
                         
-                        {/* Player Header */}
-                        <div className="flex justify-between items-center px-4 py-3 border-b border-gray-800 bg-gray-900">
-                            <div className="flex items-center gap-3 overflow-hidden">
-                                <span className={`text-xs font-bold px-2 py-0.5 rounded text-white flex items-center gap-1 ${server === 1 ? 'bg-brand-accent' : 'bg-blue-600'}`}>
-                                    <i className={server === 1 ? "fa-solid fa-play" : "fa-brands fa-google"}></i>
-                                    {server === 1 ? 'PlayerJS' : 'VideoJS'}
-                                </span>
-                                <h3 className="text-white font-medium truncate max-w-[200px] sm:max-w-md">{video.name}</h3>
-                            </div>
+                        {/* Player Header (Mobile Only / Minimal) */}
+                        <div className="flex justify-between items-center px-4 py-2 border-b border-gray-800 bg-brand-dark">
+                            <h3 className="text-white font-medium truncate text-sm sm:text-base pr-4"><i className="fa-solid fa-film text-brand-accent mr-2"></i>NOW PLAYING</h3>
                             <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center transition-all">
                                 <i className="fa-solid fa-xmark text-xl"></i>
                             </button>
                         </div>
 
                         {/* Player Area */}
-                        <div className="relative w-full aspect-video bg-black group">
+                        <div className="relative w-full aspect-video bg-black group shadow-lg">
                             {server === 1 ? (
                                 <PlayerJSInstance video={video} src={activeUrl} />
                             ) : (
                                 <VideoJSInstance video={video} src={activeUrl} />
                             )}
+                        </div>
+
+                        {/* Details & Controls Section (New UI) */}
+                        <div className="p-4 sm:p-6 bg-brand-card space-y-5">
+                            
+                            {/* Server Selector */}
+                            <div>
+                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">เลือกเซิฟเวอร์ (Select Server)</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    <button 
+                                        onClick={() => setServer(1)}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all border border-transparent ${
+                                            server === 1 
+                                            ? 'bg-brand-accent text-white shadow-[0_0_15px_rgba(229,9,20,0.4)] border-red-500/50' 
+                                            : 'bg-brand-dark text-gray-400 hover:bg-gray-800 hover:text-gray-200 border-gray-700'
+                                        }`}
+                                    >
+                                        <i className="fa-solid fa-server"></i> Server 1 (PlayerJS)
+                                    </button>
+
+                                    {video.link2 && (
+                                        <button 
+                                            onClick={() => setServer(2)}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all border border-transparent ${
+                                                server === 2 
+                                                ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)] border-blue-500/50' 
+                                                : 'bg-brand-dark text-gray-400 hover:bg-gray-800 hover:text-gray-200 border-gray-700'
+                                            }`}
+                                        >
+                                            <i className="fa-brands fa-google"></i> Server 2 (VideoJS)
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <hr className="border-gray-800" />
+
+                            {/* Details Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <h4 className="text-gray-500 text-xs mb-1">Playing :</h4>
+                                    <p className="text-white font-medium text-base line-clamp-1" title={video.name}>{video.name}</p>
+                                </div>
+                                
+                                <div className="flex flex-col md:items-end">
+                                    <h4 className="text-gray-500 text-xs mb-1">หมวดหมู่ :</h4>
+                                    <span className="text-brand-accent font-medium bg-brand-accent/10 px-2 py-0.5 rounded w-fit">
+                                        {video.group}
+                                    </span>
+                                </div>
+
+                                {video.subtitles && (
+                                    <div className="col-span-1 md:col-span-2">
+                                        <span className="inline-flex items-center gap-1.5 bg-green-900/30 text-green-400 px-3 py-1 rounded border border-green-900/50 text-xs font-bold">
+                                            <i className="fa-solid fa-closed-captioning"></i> (มีซับไทย)
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -201,7 +257,6 @@
 
             useEffect(() => {
                 if (videoNode.current) {
-                    // ตรวจสอบนามสกุลไฟล์
                     const isM3U8 = src.includes('.m3u8');
                     
                     const options = {
@@ -218,8 +273,6 @@
                         },
                         sources: [{
                             src: src,
-                            // FIX: Force 'video/mp4' if not m3u8. 
-                            // This tricks Video.js into accepting URL with no extension (like Google Drive/Photos)
                             type: isM3U8 ? 'application/x-mpegURL' : 'video/mp4' 
                         }]
                     };
@@ -292,8 +345,6 @@
                 lines.forEach((line, index) => {
                     line = line.trim();
                     if (!line) return;
-
-                    // Note: No URL modification here (User handles dl=1 manually)
 
                     if (line.startsWith('#EXTINF:')) {
                         if (current && current.link1) result.push(current);
@@ -414,28 +465,13 @@
                         </main>
                     </div>
 
-                    {/* Server Selection Floating Bar */}
-                    {currentVideo && (
-                        <div className="fixed bottom-6 left-0 right-0 z-[60] flex justify-center pointer-events-none">
-                            <div className="bg-brand-card/90 backdrop-blur border border-gray-700 rounded-full px-6 py-3 shadow-2xl flex gap-4 pointer-events-auto animate-fade-in">
-                                <button onClick={() => setServer(1)} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${server === 1 ? 'bg-brand-accent text-white shadow-lg' : 'bg-gray-800 text-gray-400'}`}>
-                                    <i className="fa-solid fa-server"></i> Server 1 (PJS)
-                                </button>
-                                {currentVideo.link2 && (
-                                    <button onClick={() => setServer(2)} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${server === 2 ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-800 text-gray-400'}`}>
-                                        <i className="fa-brands fa-google"></i> Server 2 (VJS)
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Player Modal */}
+                    {/* Player Modal with internal controls */}
                     {currentVideo && (
                         <VideoPlayerManager 
                             key={`${currentVideo.id}-${server}`}
                             video={currentVideo} 
                             server={server}
+                            setServer={setServer}
                             onClose={() => setCurrentVideo(null)} 
                         />
                     )}
