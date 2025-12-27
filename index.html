@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAV VOD Streaming</title>
+    
+    <!-- Web Icon -->
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Video.js CSS (สำหรับ Server 2) -->
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            bg: '#0f0f0f',
+                            card: '#18181b',
+                            accent: '#e50914',
+                            text: '#f3f4f6',
+                            muted: '#9ca3af'
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-in-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            background-color: #0f0f0f;
+            color: #f3f4f6;
+            font-family: 'Segoe UI', sans-serif;
+            overflow-x: hidden;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f0f0f; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #e50914; }
+        
+        .poster-ratio { aspect-ratio: 2/3; }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Video.js Skin Overrides to match theme */
+        .video-js .vjs-big-play-button {
+            background-color: rgba(229, 9, 20, 0.8) !important;
+            border-color: #e50914 !important;
+            border-radius: 50%;
+            width: 2em;
+            height: 2em;
+            line-height: 2em;
+            top: 50%;
+            left: 50%;
+            margin-top: -1em;
+            margin-left: -1em;
+        }
+        .video-js .vjs-control-bar {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        .video-js .vjs-slider {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- Video.js Script (โหลดจาก CDN) -->
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        const M3U_URL = "https://raw.githubusercontent.com/Zixzorash/IPTV/refs/heads/AV-JAPANESE/JAV_BACKUP.m3u";
+
+        // --- Component: Video Player Manager ---
+        const VideoPlayerManager = ({ video, server, onClose }) => {
+            const activeUrl = server === 1 ? video.link1 : (video.link2 || video.link1);
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in p-4">
+                    <div className="w-full max-w-5xl bg-brand-card rounded-xl overflow-hidden shadow-2xl border border-gray-800 flex flex-col">
+                        
+                        {/* Player Header */}
+                        <div className="flex justify-between items-center px-4 py-3 border-b border-gray-800 bg-gray-900">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded text-white ${server === 1 ? 'bg-brand-accent' : 'bg-blue-600'}`}>
+                                    {server === 1 ? 'PlayerJS' : 'VideoJS'}
+                                </span>
+                                <h3 className="text-white font-medium truncate">{video.name}</h3>
+                            </div>
+                            <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center transition-all">
+                                <i className="fa-solid fa-xmark text-xl"></i>
+                            </button>
+                        </div>
+
+                        {/* Player Area */}
+                        <div className="relative w-full aspect-video bg-black group">
+                            {server === 1 ? (
+                                <PlayerJSInstance video={video} src={activeUrl} />
+                            ) : (
+                                <VideoJSInstance video={video} src={activeUrl} />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Sub-Component: PlayerJS (Server 1) ---
+        const PlayerJSInstance = ({ video, src }) => {
+            const [isLoaded, setLoaded] = useState(false);
+
+            useEffect(() => {
+                // Load script if not exists
+                if (!window.Playerjs) {
+                    const script = document.createElement('script');
+                    script.src = 'playerjs.js';
+                    script.async = true;
+                    script.onload = () => setLoaded(true);
+                    script.onerror = () => console.warn("PlayerJS script not found");
+                    document.body.appendChild(script);
+                } else {
+                    setLoaded(true);
+                }
+            }, []);
+
+            useEffect(() => {
+                if (isLoaded && window.Playerjs) {
+                    const config = {
+                        id: "playerjs-container",
+                        file: src,
+                        autoplay: 1,
+                        poster: video.logo,
+                    };
+                    if (video.subtitles) {
+                        config.subtitle = `[Thai]${video.subtitles}`;
+                        config.subtitle_start = 1;
+                    }
+                    try {
+                        new window.Playerjs(config);
+                    } catch (e) { console.error("PlayerJS Init Error", e); }
+                }
+            }, [isLoaded, src, video]);
+
+            return (
+                <div id="playerjs-container" className="w-full h-full">
+                    {!isLoaded && <div className="flex items-center justify-center h-full text-gray-500">Loading PlayerJS...</div>}
+                </div>
+            );
+        };
+
+        // --- Sub-Component: VideoJS (Server 2) ---
+        const VideoJSInstance = ({ video, src }) => {
+            const videoNode = useRef(null);
+            const player = useRef(null);
+
+            useEffect(() => {
+                if (videoNode.current) {
+                    // Options
+                    const options = {
+                        autoplay: true,
+                        controls: true,
+                        responsive: true,
+                        fluid: true,
+                        poster: video.logo,
+                        sources: [{
+                            src: src,
+                            type: src.endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
+                        }]
+                    };
+
+                    // Subtitles
+                    if (video.subtitles) {
+                        options.tracks = [{
+                            kind: 'subtitles',
+                            src: video.subtitles,
+                            srclang: 'th',
+                            label: 'Thai',
+                            default: true
+                        }];
+                    }
+
+                    // Init Video.js
+                    player.current = videojs(videoNode.current, options, () => {
+                        // Player Ready
+                    });
+                }
+
+                return () => {
+                    if (player.current) {
+                        player.current.dispose();
+                    }
+                };
+            }, [src, video]);
+
+            return (
+                <div data-vjs-player className="w-full h-full">
+                    <video ref={videoNode} className="video-js vjs-big-play-centered w-full h-full" />
+                </div>
+            );
+        };
+
+        // --- Main App ---
+        const App = () => {
+            const [videos, setVideos] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            
+            const [selectedGroup, setSelectedGroup] = useState('All');
+            const [searchTerm, setSearchTerm] = useState('');
+            const [currentVideo, setCurrentVideo] = useState(null);
+            const [server, setServer] = useState(1);
+
+            useEffect(() => {
+                const fetchM3U = async () => {
+                    try {
+                        const response = await fetch(M3U_URL);
+                        if (!response.ok) throw new Error("Failed");
+                        const text = await response.text();
+                        setVideos(parseM3U(text));
+                    } catch (err) {
+                        setError("ไม่สามารถโหลดข้อมูล Playlist ได้");
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                fetchM3U();
+            }, []);
+
+            const parseM3U = (data) => {
+                const lines = data.split(/\r?\n/);
+                const result = [];
+                let current = null;
+
+                lines.forEach((line, index) => {
+                    line = line.trim();
+                    if (!line) return;
+
+                    if (line.startsWith('#EXTINF:')) {
+                        if (current && current.link1) result.push(current);
+                        
+                        const name = (line.match(/tvg-name="([^"]*)"/) || [])[1] || line.split(',').pop();
+                        const logo = (line.match(/tvg-logo="([^"]*)"/) || [])[1] || '';
+                        const group = (line.match(/group-title="([^"]*)"/) || [])[1] || 'Uncategorized';
+
+                        current = { id: `v${index}`, name, logo, group, subtitles: '', link1: '', link2: '' };
+                    } 
+                    else if (line.startsWith('#EXT-X-MEDIA:TYPE=SUBTITLES')) {
+                        const uri = (line.match(/URI="([^"]*)"/) || [])[1];
+                        if (current && uri) current.subtitles = uri;
+                    } 
+                    else if (line.startsWith('http')) {
+                        if (current) {
+                            if (!current.link1) current.link1 = line;
+                            else if (!current.link2) current.link2 = line;
+                        }
+                    }
+                });
+                if (current && current.link1) result.push(current);
+                return result;
+            };
+
+            const groups = useMemo(() => ['All', ...new Set(videos.map(v => v.group))].sort(), [videos]);
+            
+            const filteredVideos = useMemo(() => {
+                return videos.filter(v => {
+                    const matchGroup = selectedGroup === 'All' || v.group === selectedGroup;
+                    const matchSearch = v.name.toLowerCase().includes(searchTerm.toLowerCase());
+                    return matchGroup && matchSearch;
+                });
+            }, [videos, selectedGroup, searchTerm]);
+
+            return (
+                <div className="min-h-screen flex flex-col bg-brand-bg text-brand-text">
+                    {/* Header */}
+                    <nav className="bg-brand-card border-b border-gray-800 sticky top-0 z-40 shadow-lg">
+                        <div className="container mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => {setSelectedGroup('All'); setSearchTerm('');}}>
+                                <img src="icon.svg" alt="Logo" className="w-8 h-8" />
+                                <h1 className="text-xl font-bold tracking-tight">JAV TH<span className="text-brand-accent">.Streaming</span></h1>
+                            </div>
+                            <div className="flex-1 max-w-lg w-full relative group">
+                                <input 
+                                    type="text"
+                                    className="w-full bg-black/40 border border-gray-700 rounded-lg py-2 pl-4 pr-10 text-sm focus:border-brand-accent outline-none transition-all"
+                                    placeholder="ค้นหา..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                                <i className="fa-solid fa-magnifying-glass absolute right-3 top-2.5 text-gray-500"></i>
+                            </div>
+                        </div>
+                    </nav>
+
+                    {/* Content */}
+                    <div className="container mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6 flex-1">
+                        {/* Sidebar */}
+                        <aside className="w-full lg:w-60 flex-shrink-0">
+                            <h2 className="text-xs font-bold text-brand-muted uppercase tracking-widest mb-4 px-2">หมวดหมู่</h2>
+                            <div className="lg:hidden mb-4">
+                                <select className="w-full bg-brand-card border border-gray-700 rounded p-2 text-sm"
+                                    value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)}>
+                                    {groups.map(g => <option key={g} value={g}>{g}</option>)}
+                                </select>
+                            </div>
+                            <ul className="hidden lg:flex flex-col gap-1 max-h-[80vh] overflow-y-auto pr-2">
+                                {groups.map(g => (
+                                    <li key={g}>
+                                        <button onClick={() => setSelectedGroup(g)}
+                                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all flex justify-between ${selectedGroup === g ? 'bg-brand-accent text-white shadow-md' : 'text-gray-400 hover:bg-gray-800'}`}>
+                                            <span>{g}</span>
+                                            {g !== 'All' && <span className="text-[10px] opacity-60 bg-black/20 px-1.5 rounded">{videos.filter(v => v.group === g).length}</span>}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </aside>
+
+                        {/* Video Grid */}
+                        <main className="flex-1 min-w-0">
+                            {loading ? (
+                                <div className="flex justify-center items-center h-64"><i className="fa-solid fa-circle-notch fa-spin text-4xl text-brand-accent"></i></div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h2 className="text-xl font-bold flex items-center gap-2"><span className="w-1 h-6 bg-brand-accent rounded-full inline-block"></span>{selectedGroup}</h2>
+                                        <span className="text-sm text-brand-muted bg-brand-card px-3 py-1 rounded-full border border-gray-800">{filteredVideos.length} รายการ</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                        {filteredVideos.map(video => (
+                                            <div key={video.id} onClick={() => { setServer(1); setCurrentVideo(video); }}
+                                                className="group relative bg-brand-card rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-brand-accent/50 transition-all duration-300 shadow-lg hover:-translate-y-1">
+                                                <div className="poster-ratio relative overflow-hidden bg-gray-800">
+                                                    <img src={video.logo} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                                                        onError={(e) => {e.target.src="https://via.placeholder.com/300x450?text=No+Image"}}/>
+                                                    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                                                        {video.subtitles && <span className="bg-brand-accent text-[10px] font-bold px-1.5 py-0.5 rounded text-white">TH-SUB</span>}
+                                                    </div>
+                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                                                        <div className="w-12 h-12 bg-brand-accent rounded-full flex items-center justify-center shadow-lg"><i className="fa-solid fa-play text-white ml-1"></i></div>
+                                                    </div>
+                                                </div>
+                                                <div className="p-3">
+                                                    <h3 className="text-sm font-medium text-gray-200 line-clamp-2 group-hover:text-brand-accent">{video.name}</h3>
+                                                    <p className="text-xs text-brand-muted mt-1 truncate">{video.group}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </main>
+                    </div>
+
+                    {/* Server Selection Floating Bar */}
+                    {currentVideo && (
+                        <div className="fixed bottom-6 left-0 right-0 z-[60] flex justify-center pointer-events-none">
+                            <div className="bg-brand-card/90 backdrop-blur border border-gray-700 rounded-full px-6 py-3 shadow-2xl flex gap-4 pointer-events-auto animate-fade-in">
+                                <button onClick={() => setServer(1)} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${server === 1 ? 'bg-brand-accent text-white shadow-lg' : 'bg-gray-800 text-gray-400'}`}>
+                                    <i className="fa-solid fa-server"></i> Server 1 (PJS)
+                                </button>
+                                {currentVideo.link2 && (
+                                    <button onClick={() => setServer(2)} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all ${server === 2 ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-800 text-gray-400'}`}>
+                                        <i className="fa-solid fa-server"></i> Server 2 (VJS)
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Player Modal */}
+                    {currentVideo && (
+                        <VideoPlayerManager 
+                            key={`${currentVideo.id}-${server}`}
+                            video={currentVideo} 
+                            server={server}
+                            onClose={() => setCurrentVideo(null)} 
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
+
