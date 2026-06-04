@@ -122,7 +122,6 @@ const PROXY_KEY  = "JAV-TH_BY_IDOL-CHAMP_2530";
 const FORCE_PROXY_DOMAINS = [
   "surrit.com",
   "ezycdn.com",
-  "cdn.pixeldrain.eu.cc",
   "pixeldrain.eu.cc",
   "turboviplay.com"
 ];
@@ -134,20 +133,30 @@ const NO_PROXY_HINTS = [
   "deep-ocean-113.store"
 ];
 
+const normalizeMediaUrl = (url) => {
+  if (!url) return url;
+
+  // pixeldrain eu.cc ต้องใช้ ?download
+  if (url.includes("pixeldrain.eu.cc/api/file/") && !url.includes("download")) {
+    return url.includes("?") ? `${url}&download` : `${url}?download`;
+  }
+
+  return url;
+};
+
 const useProxy = (url) => {
   if (!url) return url;
 
-  // ไม่ proxy ถ้าเป็น domain ที่รู้ว่าเล่นตรงได้
+  url = normalizeMediaUrl(url);
+
   if (NO_PROXY_HINTS.some(d => url.includes(d))) {
     return url;
   }
 
-  // proxy เฉพาะ domain ที่จำเป็น
   if (FORCE_PROXY_DOMAINS.some(d => url.includes(d))) {
     return `${PROXY_BASE}?key=${PROXY_KEY}&url=${encodeURIComponent(url)}`;
   }
 
-  // ค่า default → เล่นตรง
   return url;
 };
 
