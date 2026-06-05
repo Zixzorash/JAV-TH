@@ -136,9 +136,29 @@ const NO_PROXY_HINTS = [
 const normalizeMediaUrl = (url) => {
   if (!url) return url;
 
-  // pixeldrain eu.cc ต้องใช้ ?download
-  if (url.includes("pixeldrain.eu.cc/api/file/") && !url.includes("download")) {
-    return url.includes("?") ? `${url}&download` : `${url}?download`;
+  // ตรวจจับลิงก์ของ Pixeldrain
+  if (url.includes("pixeldrain.eu.cc")) {
+    
+    // ตรวจสอบว่าลิงก์เป็น cdn. เฉยๆ (ไม่มีตัวเลข) หรือไม่
+    if (url.includes("cdn.pixeldrain.eu.cc")) {
+      // สุ่มตัวเลขตั้งแต่ 1 ถึง 50
+      const randomNum = Math.floor(Math.random() * 50) + 1;
+      // ทำให้เป็นรูปแบบ 2 หลักเสมอ เช่น 01, 09, 24
+      const cdnNode = String(randomNum).padStart(2, '0');
+      
+      // แทนที่ cdn. ด้วย cdnXX.
+      url = url.replace("cdn.pixeldrain.eu.cc", `cdn${cdnNode}.pixeldrain.eu.cc`);
+    }
+
+    // ถ้าเป็นลิงก์สั้นที่ไม่มี /api/file/ ให้แปลงรูปแบบก่อน
+    if (!url.includes("/api/file/")) {
+      url = url.replace(/pixeldrain\.eu\.cc\/([a-zA-Z0-9_-]+)(?:\?.*)?$/, "pixeldrain.eu.cc/api/file/$1");
+    }
+    
+    // บังคับเติม ?download ต่อท้ายเพื่อให้ระบบเริ่มสตรีมไฟล์ mp4 ออกมาได้
+    if (!url.includes("download")) {
+      return url.includes("?") ? `${url}&download` : `${url}?download`;
+    }
   }
 
   return url;
