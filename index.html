@@ -511,7 +511,7 @@ const useProxy = (url) => {
                                     </div>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                         {filteredVideos.map(video => (
-                                            <div key={video.id} onClick={() => { setServer(1); setCurrentVideo(video); }}
+                                            <div key={video.id} onClick={() => { setServer(video.link2 ? 2 : 1); setCurrentVideo(video); }}
                                                 className="group relative bg-brand-card rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-brand-accent/50 transition-all duration-300 shadow-lg hover:-translate-y-1">
                                                 <div className="poster-ratio relative overflow-hidden bg-gray-800">
                                                     <img src={video.logo} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
