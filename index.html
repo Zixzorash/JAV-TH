@@ -14,8 +14,8 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel for JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- ✅ แก้ไขที่ 1: ล็อกเวอร์ชัน Babel ให้เสถียรที่สุดเพื่อป้องกันบัคแทรกคำสั่ง import -->
+    <script src="https://unpkg.com/@babel/standalone@7.23.0/babel.min.js"></script>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -112,7 +112,8 @@
     <!-- Video.js Script -->
     <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
 
-    <script type="text/babel">
+    <!-- ✅ แก้ไขที่ 2: ระบุ data-presets="react" เพื่อสั่งให้ Babel แปลงแค่ React และไม่ต้องพยายามแปลงโค้ด JS สมัยใหม่ -->
+    <script type="text/babel" data-presets="react">
 /* ===========================
    PROXY CONFIG 
 =========================== */
@@ -135,22 +136,15 @@ const NO_PROXY_HINTS = [
 const normalizeMediaUrl = (url) => {
   if (!url) return url;
 
-  // ตรวจจับลิงก์ของ Pixeldrain
   if (url.includes("pixeldrain.eu.cc")) {
-    
-    // 1. ถ้าเป็นลิงก์สั้น ให้แปลงเป็นรูปแบบ API ก่อน
     if (!url.includes("/api/file/")) {
       url = url.replace(/pixeldrain\.eu\.cc\/([a-zA-Z0-9_-]+)(?:\?.*)?$/, "pixeldrain.eu.cc/api/file/$1");
     }
-
-    // 2. สุ่มตัวเลข cdn01 ถึง cdn50 เพื่อให้ดึงไฟล์วิดีโอได้
     if (url.includes("cdn.pixeldrain.eu.cc")) {
       const randomNum = Math.floor(Math.random() * 50) + 1;
       const cdnNode = String(randomNum).padStart(2, '0');
       url = url.replace("cdn.pixeldrain.eu.cc", `cdn${cdnNode}.pixeldrain.eu.cc`);
     }
-
-    // 3. กำจัด ?download ทิ้ง เพื่อไม่ให้ติดระบบป้องกัน Hotlink
     url = url.replace("?download", "").replace("&download", "");
   }
 
@@ -159,7 +153,6 @@ const normalizeMediaUrl = (url) => {
 
 const useProxy = (url) => {
   if (!url) return url;
-
   url = normalizeMediaUrl(url);
 
   if (NO_PROXY_HINTS.some(d => url.includes(d))) {
@@ -181,17 +174,15 @@ const useProxy = (url) => {
 
         const M3U_URL = "https://raw.githubusercontent.com/Zixzorash/IPTV/refs/heads/AV-JAPANESE/JAV_BACKUP.m3u";
 
-// --- Component: Video Player Manager (Updated UI) ---
+// --- Component: Video Player Manager ---
         const VideoPlayerManager = ({ video, server, setServer, onClose }) => {
             const rawUrl = server === 1 ? video.link1 : (video.link2 || video.link1);
             const activeUrl = useProxy(rawUrl);
-            
 
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-fade-in p-2 sm:p-4 overflow-y-auto">
                     <div className="w-full max-w-4xl bg-brand-card rounded-xl overflow-hidden shadow-2xl border border-gray-800 flex flex-col my-auto relative">
                         
-                        {/* Player Header (Mobile Only / Minimal) */}
                         <div className="flex justify-between items-center px-4 py-2 border-b border-gray-800 bg-brand-dark">
                             <h3 className="text-white font-medium truncate text-sm sm:text-base pr-4"><i className="fa-solid fa-film text-brand-accent mr-2"></i>NOW PLAYING</h3>
                             <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center transition-all">
@@ -199,7 +190,6 @@ const useProxy = (url) => {
                             </button>
                         </div>
 
-                        {/* Player Area */}
                         <div className="relative w-full aspect-video bg-black group shadow-lg">
                             {server === 1 ? (
                                 <PlayerJSInstance video={video} src={activeUrl} />
@@ -208,10 +198,7 @@ const useProxy = (url) => {
                             )}
                         </div>
 
-                        {/* Details & Controls Section (New UI) */}
                         <div className="p-4 sm:p-6 bg-brand-card space-y-5">
-                            
-                            {/* Server Selector */}
                             <div>
                                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">เลือกเซิฟเวอร์ (Select Server)</h4>
                                 <div className="flex flex-wrap gap-2">
@@ -243,7 +230,6 @@ const useProxy = (url) => {
 
                             <hr className="border-gray-800" />
 
-                            {/* Details Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <h4 className="text-gray-500 text-xs mb-1">Playing :</h4>
@@ -265,7 +251,6 @@ const useProxy = (url) => {
                                     </div>
                                 )}
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -300,10 +285,7 @@ const useProxy = (url) => {
                             file: src,
                             autoplay: 1,
                             poster: video.logo,
-                            hlsjs: {
-                                 enabled: true,
-                                 debug: false
-                           }
+                            hlsjs: { enabled: true, debug: false }
                         };
                         if (video.subtitles) {
                             config.subtitle = `[Thai]${video.subtitles}`;
@@ -324,75 +306,60 @@ const useProxy = (url) => {
         };
 
         // --- Sub-Component: VideoJS (Server 2) ---
-        
-  const VideoJSInstance = ({ video, src }) => {
-  const videoNode = useRef(null);
-  const player = useRef(null);
+        const VideoJSInstance = ({ video, src }) => {
+            const videoNode = useRef(null);
+            const player = useRef(null);
 
-  useEffect(() => {
-    if (!videoNode.current) return;
+            useEffect(() => {
+                if (!videoNode.current) return;
 
-    const isGooglePhotos =
-      src.includes("googleusercontent.com") ||
-      src.includes("lh3.googleusercontent.com") ||
-      src.includes("photos.google.com");
+                const isGooglePhotos = src.includes("googleusercontent.com") || src.includes("lh3.googleusercontent.com") || src.includes("photos.google.com");
+                const isM3U8 = src.includes(".m3u8");
 
-    const isM3U8 = src.includes(".m3u8");
+                const options = {
+                    autoplay: false,
+                    controls: true,
+                    responsive: true,
+                    fluid: true,
+                    poster: video.logo,
+                    preload: isGooglePhotos ? "auto" : "metadata",
+                    playsinline: true,
+                    html5: isM3U8 ? { vhs: { overrideNative: true } } : {},
+                    sources: [{ src, type: isM3U8 ? "application/x-mpegURL" : "video/mp4" }]
+                };
 
-    const options = {
-  autoplay: false,
-  controls: true,
-  responsive: true,
-  fluid: true,
-  poster: video.logo,
-  preload: isGooglePhotos ? "auto" : "metadata",
-  playsinline: true,
-  html5: isM3U8 ? { vhs: { overrideNative: true } } : {},
-  sources: [{
-    src,
-    type: isM3U8 ? "application/x-mpegURL" : "video/mp4"
-  }]
-};
+                if (video.subtitles) {
+                    options.tracks = [{
+                        kind: "subtitles",
+                        src: video.subtitles,
+                        srclang: "th",
+                        label: "Thai",
+                        default: true
+                    }];
+                }
 
-    // subtitle ใช้ได้ตามเดิม
-    if (video.subtitles) {
-      options.tracks = [{
-        kind: "subtitles",
-        src: video.subtitles,
-        srclang: "th",
-        label: "Thai",
-        default: true
-      }];
-    }
+                player.current = videojs(videoNode.current, options, function () {
+                    if (isGooglePhotos) { this.load(); }
+                });
 
-    player.current = videojs(videoNode.current, options, function () {
-  if (isGooglePhotos) {
-    this.load(); // 🔥 preload จริง
-  }
-});
+                player.current.on("error", () => {
+                    console.error("VideoJS error:", player.current.error());
+                });
 
-    player.current.on("error", () => {
-      console.error("VideoJS error:", player.current.error());
-    });
+                return () => {
+                    if (player.current) {
+                        player.current.dispose();
+                        player.current = null;
+                    }
+                };
+            }, [src, video]);
 
-    return () => {
-      if (player.current) {
-        player.current.dispose();
-        player.current = null;
-      }
-    };
-  }, [src, video]);
-
-  return (
-    <div data-vjs-player className="w-full h-full">
-      <video
-        ref={videoNode}
-        className="video-js vjs-big-play-centered w-full h-full"
-        playsInline
-      />
-    </div>
-  );
-};
+            return (
+                <div data-vjs-player className="w-full h-full">
+                    <video ref={videoNode} className="video-js vjs-big-play-centered w-full h-full" playsInline />
+                </div>
+            );
+        };
 
         // --- Main App ---
         const App = () => {
@@ -406,19 +373,21 @@ const useProxy = (url) => {
             const [server, setServer] = useState(1);
 
             useEffect(() => {
-                const fetchM3U = async () => {
-                    try {
-                        const response = await fetch(M3U_URL);
+                // ✅ แก้ไขที่ 3: เปลี่ยนจาก async/await มาใช้ Promise (.then) เพื่อไม่ให้ Babel แปลงโค้ดและสร้าง import ออกมา
+                fetch(M3U_URL)
+                    .then(response => {
                         if (!response.ok) throw new Error("Failed");
-                        const text = await response.text();
+                        return response.text();
+                    })
+                    .then(text => {
                         setVideos(parseM3U(text));
-                    } catch (err) {
+                    })
+                    .catch(err => {
                         setError("ไม่สามารถโหลดข้อมูล Playlist ได้");
-                    } finally {
+                    })
+                    .finally(() => {
                         setLoading(false);
-                    }
-                };
-                fetchM3U();
+                    });
             }, []);
 
             const parseM3U = (data) => {
@@ -466,7 +435,6 @@ const useProxy = (url) => {
 
             return (
                 <div className="min-h-screen flex flex-col bg-brand-bg text-brand-text">
-                    {/* Header */}
                     <nav className="bg-brand-card border-b border-gray-800 sticky top-0 z-40 shadow-lg">
                         <div className="container mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
                             <div className="flex items-center gap-2 cursor-pointer" onClick={() => {setSelectedGroup('All'); setSearchTerm('');}}>
@@ -486,9 +454,7 @@ const useProxy = (url) => {
                         </div>
                     </nav>
 
-                    {/* Content */}
                     <div className="container mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6 flex-1">
-                        {/* Sidebar */}
                         <aside className="w-full lg:w-60 flex-shrink-0">
                             <h2 className="text-xs font-bold text-brand-muted uppercase tracking-widest mb-4 px-2">หมวดหมู่</h2>
                             <div className="lg:hidden mb-4">
@@ -510,7 +476,6 @@ const useProxy = (url) => {
                             </ul>
                         </aside>
 
-                        {/* Video Grid */}
                         <main className="flex-1 min-w-0">
                             {loading ? (
                                 <div className="flex justify-center items-center h-64"><i className="fa-solid fa-circle-notch fa-spin text-4xl text-brand-accent"></i></div>
@@ -549,7 +514,6 @@ const useProxy = (url) => {
                         </main>
                     </div>
 
-                    {/* Player Modal with internal controls */}
                     {currentVideo && (
                         <VideoPlayerManager 
                             key={`${currentVideo.id}-${server}`}
@@ -568,8 +532,4 @@ const useProxy = (url) => {
     </script>
 </body>
 </html>
-
-
-
-
 
